@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Channel Organizer — Configure</title>
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/configure.css">
+</head>
+<body>
+  <div class="bg-bubbles" aria-hidden="true"></div>
+  <header class="masthead glass">
+    <h1>Channel Organizer</h1>
+    <p class="tagline">Create movie channels, import lists, watch in Stremio.</p>
+    <ol class="steps">
+      <li><strong>Configure</strong> — Create channels &amp; import movies on this page</li>
+      <li><strong>Install</strong> — Pink button at the bottom → installs into Stremio</li>
+      <li><strong>Watch</strong> — Stremio → Discover → <strong>Channel</strong> → your channel</li>
+    </ol>
+  </header>
+
+  <main class="layout">
+    <section class="panel glass" id="setup-panel">
+      <h2>Your workspace</h2>
+      <div class="field-row">
+        <label for="user-id">User ID</label>
+        <input id="user-id" type="text" readonly placeholder="Generate or paste saved ID">
+        <button type="button" id="btn-new-user" class="btn">New ID</button>
+      </div>
+      <div class="actions">
+        <div class="install-box">
+          <label for="addon-url">Paste this URL in Stremio → Addons</label>
+          <input id="addon-url" type="text" readonly class="addon-url-input">
+        </div>
+        <button type="button" id="btn-copy-install" class="btn">Copy addon URL</button>
+        <button type="button" id="btn-copy-url" class="btn">Copy configure link</button>
+        <button type="button" id="btn-export" class="btn">Export backup</button>
+        <label class="btn btn-file">Import backup<input type="file" id="import-backup" accept=".json" hidden></label>
+      </div>
+      <p class="hint warn">Manage channels here. Install via the pink button at the <strong>bottom</strong>.</p>
+    </section>
+
+    <section class="panel glass">
+      <h2>Channels</h2>
+      <div class="field-row">
+        <input id="playlist-name" type="text" placeholder="New channel name">
+        <select id="playlist-sort">
+          <option value="position">Sort: Manual order</option>
+          <option value="title">Sort: Title</option>
+          <option value="year">Sort: Year</option>
+          <option value="director">Sort: Director</option>
+          <option value="genres">Sort: Genre</option>
+          <option value="rating">Sort: Rating</option>
+          <option value="added_at">Sort: Date added</option>
+        </select>
+        <select id="playlist-order">
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+        <button type="button" id="btn-create-playlist" class="btn btn-primary">Create</button>
+      </div>
+      <ul id="playlist-list" class="playlist-list" role="list"></ul>
+    </section>
+
+    <section class="panel glass" id="detail-panel" hidden>
+      <h2 id="detail-title">Channel</h2>
+      <div class="field-row">
+        <select id="detail-sort"></select>
+        <select id="detail-order">
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+        <button type="button" id="btn-apply-sort" class="btn">Apply sort</button>
+        <button type="button" id="btn-delete-playlist" class="btn btn-danger">Delete channel</button>
+      </div>
+
+      <div class="import-tabs" role="tablist">
+        <button class="tab active" data-tab="url">URL import</button>
+        <button class="tab" data-tab="bulk">Bulk paste</button>
+        <button class="tab" data-tab="file">File upload</button>
+        <button class="tab" data-tab="single">Add one</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-url">
+        <label for="import-url">Movie list URL (Taste of Cinema, Letterboxd, IMDb list)</label>
+        <input id="import-url" type="url" placeholder="https://www.tasteofcinema.com/2014/15-visually-striking-movies...">
+        <button type="button" id="btn-import-url" class="btn btn-primary">Import from URL</button>
+      </div>
+      <div class="tab-panel" id="tab-bulk">
+        <label for="import-bulk">One title per line</label>
+        <textarea id="import-bulk" rows="8" placeholder="Blade Runner (1982)&#10;Her&#10;tt0032138"></textarea>
+        <button type="button" id="btn-import-bulk" class="btn btn-primary">Import titles</button>
+      </div>
+      <div class="tab-panel" id="tab-file">
+        <label class="btn btn-file">Choose .txt or .md<input type="file" id="import-file" accept=".txt,.md" hidden></label>
+        <button type="button" id="btn-import-file" class="btn btn-primary" disabled>Import file</button>
+      </div>
+      <div class="tab-panel" id="tab-single">
+        <input id="single-title" type="text" placeholder="Movie title or tt1234567">
+        <input id="single-year" type="number" placeholder="Year (optional)" min="1888" max="2100">
+        <button type="button" id="btn-add-single" class="btn btn-primary">Add movie</button>
+      </div>
+
+      <div id="job-status" class="job-status" hidden></div>
+
+      <div class="items-header">
+        <h3>Movies <span id="items-count"></span></h3>
+        <button type="button" id="btn-load-more" class="btn" hidden>Load more</button>
+      </div>
+      <div id="items-grid" class="items-grid" role="list"></div>
+    </section>
+  </main>
+
+  <div id="install-toast" class="install-toast" hidden role="status"></div>
+
+  <footer class="install-footer glass">
+    <button type="button" id="btn-install-stremio" class="btn btn-install">Install in Stremio</button>
+  </footer>
+
+  <footer class="footer">
+    <p>Open-source · <a href="https://github.com/AlexRabbit/stremio" target="_blank" rel="noopener">GitHub</a></p>
+  </footer>
+  <script src="/static/configure.js?v=6"></script>
+</body>
+</html>
