@@ -23,16 +23,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject public API URL into configure UI
+      - name: Inject API URL and configure token into UI
         env:
-          # Set PUBLIC_API_URL in repo Settings → Variables after deploying Render
-          PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          CONFIGURE_API_TOKEN: ${{ secrets.CONFIGURE_API_TOKEN }}
         run: |
-          API="${PUBLIC_API_URL:?Set PUBLIC_API_URL in repo Actions variables}"
+          API="${PUBLIC_API_URL:-}"
+          if [ -z "$API" ]; then
+            echo "::error::Add repository secret PUBLIC_API_URL (Settings → Secrets → Actions)"
+            exit 1
+          fi
           API="${API%/}"
+          TOKEN="${CONFIGURE_API_TOKEN:-}"
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Add repository secret CONFIGURE_API_TOKEN (same value as API_TOKEN on VPS)"
+            exit 1
+          fi
           echo "Using API base: $API"
           sed -i "s|__CHANNEL_ORGANIZER_API__|${API}|g" web/configure.html
           sed -i "s|__CHANNEL_ORGANIZER_API__|${API}|g" web/static/configure.js
+          sed -i "s|__CONFIGURE_API_TOKEN__|${TOKEN}|g" web/static/configure.js
 
       - uses: actions/configure-pages@v5
 

@@ -37,6 +37,9 @@ class Settings:
     import_rate_limit_per_min: int
     cors_origins: str
     api_token: str
+    lock_configure_api: bool
+    configure_allowed_origins: str
+    configure_allowed_referer_prefix: str
     stremio_streaming_server: str
     backup_schema_version: int
     rust_parser_bin: Path
@@ -72,6 +75,15 @@ class Settings:
                 "CORS_ORIGINS", "https://alexrabbit.github.io,*"
             ),
             api_token=os.getenv("API_TOKEN", "").strip(),
+            lock_configure_api=os.getenv("LOCK_CONFIGURE_API", "0").strip()
+            in ("1", "true", "yes"),
+            configure_allowed_origins=os.getenv(
+                "CONFIGURE_ALLOWED_ORIGINS", "https://alexrabbit.github.io"
+            ),
+            configure_allowed_referer_prefix=os.getenv(
+                "CONFIGURE_ALLOWED_REFERER_PREFIX",
+                "https://alexrabbit.github.io/Stremio-Watchlist-Maker",
+            ).rstrip("/"),
             backup_schema_version=int(os.getenv("BACKUP_SCHEMA_VERSION", "1")),
             stremio_streaming_server=os.getenv(
                 "STREMIO_STREAMING_SERVER", "http://127.0.0.1:11470"

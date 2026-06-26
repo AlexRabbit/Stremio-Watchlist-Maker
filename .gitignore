@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 .venv/
 venv/
 __pycache__/
@@ -6,9 +8,17 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
+data/
 data/*.db
 data/*.db-*
 logs/
-data/
 rust/title_parser/target/
 *.bak
+
+# Never commit personal or server-specific data
+bookmarks.html
+BackupExample.json
+deploy/
+scripts/
+SECRETS*
+*.local.md

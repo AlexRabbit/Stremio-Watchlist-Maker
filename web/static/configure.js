@@ -1,7 +1,13 @@
 (() => {
   const PLACEHOLDER_API = "__CHANNEL_ORGANIZER_API__";
+  const PLACEHOLDER_TOKEN = "__CONFIGURE_API_TOKEN__";
   const FALLBACK_PUBLIC_API = PLACEHOLDER_API;
+  const CONFIGURE_API_TOKEN =
+    PLACEHOLDER_TOKEN && PLACEHOLDER_TOKEN !== "__CONFIGURE_API_TOKEN__"
+      ? PLACEHOLDER_TOKEN
+      : "";
   const DEV_MODE = new URLSearchParams(window.location.search).has("dev");
+  const ON_GITHUB_PAGES = /\.github\.io$/i.test(window.location.hostname);
 
   function metaApi() {
     const raw = document.querySelector('meta[name="channel-organizer-api"]')?.content?.trim();
@@ -11,7 +17,9 @@
 
   function apiBase() {
     const fromQuery = new URLSearchParams(window.location.search).get("api");
-    if (fromQuery) return fromQuery.replace(/\/$/, "");
+    if (fromQuery && (!ON_GITHUB_PAGES || DEV_MODE)) {
+      return fromQuery.replace(/\/$/, "");
+    }
     if (DEV_MODE) {
       return (localStorage.getItem("playlist_api_base") || "http://127.0.0.1:7010").replace(/\/$/, "");
     }
@@ -102,9 +110,12 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const { timeoutMs: _drop, ...fetchOpts } = opts;
+    const authHeaders = CONFIGURE_API_TOKEN
+      ? { Authorization: `Bearer ${CONFIGURE_API_TOKEN}` }
+      : {};
     try {
       const res = await fetch(`${BASE}${path}`, {
-        headers: { "Content-Type": "application/json", ...fetchOpts.headers },
+        headers: { "Content-Type": "application/json", ...authHeaders, ...fetchOpts.headers },
         signal: controller.signal,
         ...fetchOpts,
       });
@@ -162,7 +173,7 @@
   async function ensureUser() {
     if (pathUserId) {
       saveUser(pathUserId);
-      return;
+      return userId;
     }
     if (!userId) {
       const data = await api("/api/users", { method: "POST", body: "{}" });
@@ -170,6 +181,15 @@
     } else {
       saveUser(userId);
     }
+    if (!userId) {
+      throw new Error("Could not create a user ID — try New ID again.");
+    }
+    return userId;
+  }
+
+  async function requireUserId() {
+    if (userId) return userId;
+    return ensureUser();
   }
 
   async function loadPlaylists() {
@@ -344,6 +364,7 @@
       return;
     }
     try {
+      await requireUserId();
       await api(`/api/users/${userId}/playlists`, {
         method: "POST",
         body: JSON.stringify({
@@ -435,6 +456,7 @@
 
   bindClick("btn-export", async () => {
     try {
+      await requireUserId();
       const data = await api(`/api/users/${userId}/export`);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
@@ -452,6 +474,7 @@
       const file = e.target.files[0];
       if (!file) return;
       try {
+        await requireUserId();
         const data = JSON.parse(await file.text());
         const res = await importBackupData(data);
         showToast(
@@ -475,9 +498,9 @@
       await ensureUser();
     } catch (err) {
       const hint = DEV_MODE
-        ? "Cannot reach API — check Addon server above or run run.bat locally."
-        : "Cannot reach the shared API yet. The site maintainer must deploy the backend (see docs/DEPLOY.md).";
-      showToast(hint, 14000);
+        ? `Cannot reach API at ${BASE} — check Addon server above or run run.bat locally.`
+        : `Cannot reach the API at ${BASE}. If you maintain this site: set PUBLIC_API_URL or deploy/public-api.url, then re-run GitHub Pages (see docs/DEPLOY.md).`;
+      showToast(hint, 16000);
       console.error(err);
       return;
     }

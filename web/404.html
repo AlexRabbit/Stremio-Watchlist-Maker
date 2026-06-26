@@ -2,11 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Stremio Watchlist Maker</title>
+  <script>
+    (function () {
+      var p = location.pathname;
+      if (/^\/Stremio(\/|$)/i.test(p) && !/^\/Stremio-Watchlist-Maker/i.test(p)) {
+        location.replace("/Stremio-Watchlist-Maker/configure.html" + location.search + location.hash);
+        return;
+      }
+      location.replace("configure.html" + location.search + location.hash);
+    })();
+  </script>
   <meta http-equiv="refresh" content="0; url=configure.html">
-  <title>Channel Organizer</title>
-  <script>location.replace("configure.html");</script>
 </head>
 <body>
-  <p><a href="configure.html">Go to Channel Organizer</a></p>
+  <p><a href="configure.html">Go to configure</a></p>
 </body>
 </html>

@@ -27,15 +27,21 @@ def _valid_user_id(user_id: str) -> bool:
     return bool(user_id and USER_ID_RE.match(user_id))
 
 
-def _cors_headers(resp: response.HTTPResponse) -> response.HTTPResponse:
-    origin = settings.cors_origins
-    if origin == "*":
+def _cors_headers(
+    resp: response.HTTPResponse, request: Request | None = None
+) -> response.HTTPResponse:
+    allowed = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+    req_origin = (request.headers.get("origin") or "").strip() if request else ""
+    if "*" in allowed:
         resp.headers["Access-Control-Allow-Origin"] = "*"
-    elif "," in origin:
-        # Allow listed origins; reflect request origin when it matches.
-        resp.headers["Access-Control-Allow-Origin"] = "*"
+    elif req_origin and req_origin in allowed:
+        resp.headers["Access-Control-Allow-Origin"] = req_origin
+    elif len(allowed) == 1:
+        resp.headers["Access-Control-Allow-Origin"] = allowed[0]
+    elif allowed:
+        resp.headers["Access-Control-Allow-Origin"] = allowed[0]
     else:
-        resp.headers["Access-Control-Allow-Origin"] = origin
+        resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     resp.headers["Access-Control-Max-Age"] = "86400"
@@ -50,6 +56,35 @@ def _check_api_auth(request: Request) -> bool:
     if auth == f"Bearer {token}":
         return True
     return request.args.get("token") == token
+
+
+def _configure_origins() -> set[str]:
+    return {
+        o.strip()
+        for o in settings.configure_allowed_origins.split(",")
+        if o.strip()
+    }
+
+
+def _check_configure_api_access(request: Request) -> bool:
+    """Block /api/* unless request comes from the official GitHub Pages configure UI."""
+    if not settings.lock_configure_api:
+        return _check_api_auth(request)
+    if not _check_api_auth(request):
+        return False
+    origin = (request.headers.get("origin") or "").strip()
+    referer = (request.headers.get("referer") or "").strip()
+    allowed = _configure_origins()
+    prefix = settings.configure_allowed_referer_prefix
+    if origin and origin in allowed:
+        return True
+    if referer and (
+        referer.startswith(prefix + "/")
+        or referer.startswith(prefix + "?")
+        or referer.rstrip("/") == prefix
+    ):
+        return True
+    return False
 
 
 def create_app() -> Sanic:
@@ -87,13 +122,20 @@ def create_app() -> Sanic:
         log.exception("Request failed: %s", exc)
         return response.json({"error": str(exc)}, status=500)
 
+    @app.middleware("request")
+    async def protect_management_api(request: Request):
+        if request.method == "OPTIONS" or not request.path.startswith("/api/"):
+            return
+        if not _check_configure_api_access(request):
+            raise SanicException("forbidden", status_code=403)
+
     @app.middleware("response")
-    async def cors_middleware(_request: Request, resp: response.HTTPResponse):
-        return _cors_headers(resp)
+    async def cors_middleware(request: Request, resp: response.HTTPResponse):
+        return _cors_headers(resp, request)
 
     @app.options("/<path:path>")
-    async def cors_preflight(_request: Request, path: str):
-        return _cors_headers(response.empty())
+    async def cors_preflight(request: Request, path: str):
+        return _cors_headers(response.empty(), request)
 
     # --- Stremio protocol ---
     @app.get("/")
@@ -125,7 +167,8 @@ def create_app() -> Sanic:
     async def manifest(request: Request, user_id: str):
         if not _valid_user_id(user_id):
             return _cors_headers(
-                response.json({"error": "invalid user id"}, status=400)
+                response.json({"error": "invalid user id"}, status=400),
+                request,
             )
         db.ensure_user(user_id)
         return response.json(build_manifest(user_id))
@@ -151,13 +194,13 @@ def create_app() -> Sanic:
 
     # --- Management API ---
     @app.get("/api/health")
-    async def health(_request: Request):
+    async def health(request: Request):
+        if settings.lock_configure_api and not _check_configure_api_access(request):
+            raise SanicException("forbidden", status_code=403)
         return response.json({"status": "ok", "version": "0.5.1"})
 
     @app.post("/api/users")
     async def create_user(request: Request):
-        if not _check_api_auth(request):
-            return response.json({"error": "unauthorized"}, status=401)
         body = request.json or {}
         user_id = db.create_user(body.get("name", "My Playlists"))
         return response.json({"user_id": user_id, "configure_url": f"/configure?user={user_id}"})
