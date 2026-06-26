@@ -55,6 +55,8 @@ def _check_api_auth(request: Request) -> bool:
 def create_app() -> Sanic:
     app = Sanic("stremio-playlists")
     app.config.ACCESS_LOG = False
+    app.config.REQUEST_MAX_SIZE = 64 * 1024 * 1024
+    app.config.REQUEST_TIMEOUT = 300
 
     @app.listener("before_server_start")
     async def setup(_app: Sanic) -> None:
@@ -342,11 +344,22 @@ def create_app() -> Sanic:
 
     @app.post("/api/users/<user_id:str>/import-backup")
     async def import_backup(request: Request, user_id: str):
+        if not _valid_user_id(user_id):
+            return response.json({"error": "invalid user id"}, status=400)
         if not _check_api_auth(request):
             return response.json({"error": "unauthorized"}, status=401)
-        body = request.json or {}
-        count = db.import_user_data(user_id, body)
-        return response.json({"imported_items": count})
+        try:
+            body = request.json or {}
+        except Exception:
+            return response.json({"error": "invalid json body"}, status=400)
+        if not isinstance(body.get("playlists"), list):
+            return response.json({"error": "expected { playlists: [...] }"}, status=400)
+        try:
+            stats = db.import_user_data(user_id, body)
+        except Exception as exc:
+            log.exception("import-backup failed for %s", user_id)
+            return response.json({"error": str(exc)}, status=500)
+        return response.json(stats)
 
     if STATIC_DIR.exists():
         app.static("/static", STATIC_DIR)

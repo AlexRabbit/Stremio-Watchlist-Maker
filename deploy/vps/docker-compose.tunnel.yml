@@ -1,0 +1,6 @@
+services:
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    network_mode: host
+    command: tunnel --no-autoupdate --url http://127.0.0.1:7010

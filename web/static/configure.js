@@ -1,6 +1,6 @@
 (() => {
   const PLACEHOLDER_API = "__CHANNEL_ORGANIZER_API__";
-  const FALLBACK_PUBLIC_API = "https://stremio-channel-organizer.onrender.com";
+  const FALLBACK_PUBLIC_API = PLACEHOLDER_API;
   const DEV_MODE = new URLSearchParams(window.location.search).has("dev");
 
   function metaApi() {
@@ -98,20 +98,65 @@
   }
 
   async function api(path, opts = {}) {
-    const res = await fetch(`${BASE}${path}`, {
-      headers: { "Content-Type": "application/json", ...opts.headers },
-      ...opts,
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      let msg = text;
-      try {
-        const j = JSON.parse(text);
-        msg = j.error || j.message || j.description || text;
-      } catch (_) { /* raw */ }
-      throw new Error(msg || `HTTP ${res.status}`);
+    const timeoutMs = opts.timeoutMs ?? 180000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const { timeoutMs: _drop, ...fetchOpts } = opts;
+    try {
+      const res = await fetch(`${BASE}${path}`, {
+        headers: { "Content-Type": "application/json", ...fetchOpts.headers },
+        signal: controller.signal,
+        ...fetchOpts,
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        let msg = text;
+        try {
+          const j = JSON.parse(text);
+          msg = j.error || j.message || j.description || text;
+        } catch (_) { /* raw */ }
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+      return text ? JSON.parse(text) : {};
+    } catch (err) {
+      if (err.name === "AbortError") {
+        throw new Error("Request timed out — large backups import in batches automatically; try again.");
+      }
+      if (err.message === "Failed to fetch") {
+        throw new Error("Cannot reach the API (offline, CORS, or HTTPS certificate). Check that the backend is running.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    return text ? JSON.parse(text) : {};
+  }
+
+  async function importBackupData(data) {
+    const playlists = Array.isArray(data.playlists) ? data.playlists : [];
+    if (!playlists.length) {
+      throw new Error("Backup has no playlists");
+    }
+    const chunkSize = 4;
+    let importedItems = 0;
+    let playlistsCreated = 0;
+    let itemsSkipped = 0;
+    for (let i = 0; i < playlists.length; i += chunkSize) {
+      const chunk = playlists.slice(i, i + chunkSize);
+      const end = Math.min(i + chunkSize, playlists.length);
+      showToast(`Importing playlists ${i + 1}–${end} of ${playlists.length}…`, 5000);
+      const res = await api(`/api/users/${userId}/import-backup`, {
+        method: "POST",
+        body: JSON.stringify({
+          schema_version: data.schema_version,
+          playlists: chunk,
+        }),
+        timeoutMs: 300000,
+      });
+      importedItems += res.imported_items || 0;
+      playlistsCreated += res.playlists_created || 0;
+      itemsSkipped += res.items_skipped || 0;
+    }
+    return { imported_items: importedItems, playlists_created: playlistsCreated, items_skipped: itemsSkipped };
   }
 
   async function ensureUser() {
@@ -408,14 +453,17 @@
       if (!file) return;
       try {
         const data = JSON.parse(await file.text());
-        const res = await api(`/api/users/${userId}/import-backup`, {
-          method: "POST",
-          body: JSON.stringify(data),
-        });
-        showToast(`Imported ${res.imported_items} items`);
+        const res = await importBackupData(data);
+        showToast(
+          `Imported ${res.imported_items} movies in ${res.playlists_created} channels` +
+            (res.items_skipped ? ` (${res.items_skipped} skipped)` : ""),
+          10000,
+        );
         await loadPlaylists();
       } catch (err) {
-        showToast(`Backup import failed: ${err.message}`);
+        showToast(`Backup import failed: ${err.message}`, 12000);
+      } finally {
+        e.target.value = "";
       }
     });
   }
