@@ -112,10 +112,13 @@ def create_app() -> Sanic:
         await resolver.close()
 
     @app.exception(SanicException)
-    async def sanic_error(_request: Request, exc: SanicException):
+    async def sanic_error(request: Request, exc: SanicException):
         if exc.status_code >= 500:
             log.exception("Request failed: %s", exc)
-        return response.json({"error": exc.message}, status=exc.status_code)
+        return _cors_headers(
+            response.json({"error": exc.message}, status=exc.status_code),
+            request,
+        )
 
     @app.exception(Exception)
     async def unhandled_error(_request: Request, exc: Exception):

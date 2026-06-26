@@ -17,7 +17,6 @@ rust/title_parser/target/
 
 # Never commit personal or server-specific data
 bookmarks.html
-BackupExample.json
 deploy/
 scripts/
 SECRETS*

@@ -18,7 +18,13 @@
 3. **Install in Stremio** (pink button)
 4. **Discover → Channel** → your lists
 
-Export and import your own backup JSON from the configure page anytime.
+### Try the sample backup
+
+1. Download **[BackupExample.json](BackupExample.json)** from this repo
+2. Open [configure](https://alexrabbit.github.io/Stremio-Watchlist-Maker/configure.html) → **New ID**
+3. **Import backup** → select the file (large — imports in batches)
+
+Export and import your own backups anytime from the configure page.
 
 ---
 
@@ -26,7 +32,7 @@ Export and import your own backup JSON from the configure page anytime.
 
 - Taste of Cinema import with multi-page scraping
 - Discover filters: `-by release date`, `-Directors`, `-90s`, genres
-- Personal channels backed by a shared API
+- Sample **[BackupExample.json](BackupExample.json)** — 230 channels, 2000+ movies
 
 ---
 

@@ -1,18 +1,18 @@
 (() => {
-  const PLACEHOLDER_API = "__CHANNEL_ORGANIZER_API__";
-  const PLACEHOLDER_TOKEN = "__CONFIGURE_API_TOKEN__";
-  const FALLBACK_PUBLIC_API = PLACEHOLDER_API;
-  const CONFIGURE_API_TOKEN =
-    PLACEHOLDER_TOKEN && PLACEHOLDER_TOKEN !== "__CONFIGURE_API_TOKEN__"
-      ? PLACEHOLDER_TOKEN
-      : "";
+  const RAW_API = "__CHANNEL_ORGANIZER_API__";
+  const RAW_TOKEN = "__CONFIGURE_API_TOKEN__";
   const DEV_MODE = new URLSearchParams(window.location.search).has("dev");
   const ON_GITHUB_PAGES = /\.github\.io$/i.test(window.location.hostname);
 
+  function isPlaceholder(value) {
+    return typeof value === "string" && /^__[A-Z0-9_]+__$/.test(value);
+  }
+
+  const CONFIGURE_API_TOKEN = isPlaceholder(RAW_TOKEN) ? "" : RAW_TOKEN;
+
   function metaApi() {
-    const raw = document.querySelector('meta[name="channel-organizer-api"]')?.content?.trim();
-    if (raw && raw !== PLACEHOLDER_API) return raw.replace(/\/$/, "");
-    return "";
+    const raw = document.querySelector('meta[name="channel-organizer-api"]')?.content?.trim() || "";
+    return isPlaceholder(raw) ? "" : raw.replace(/\/$/, "");
   }
 
   function apiBase() {
@@ -25,7 +25,8 @@
     }
     const baked = metaApi();
     if (baked) return baked;
-    if (/\.github\.io$/i.test(window.location.hostname)) return FALLBACK_PUBLIC_API;
+    if (!isPlaceholder(RAW_API)) return RAW_API.replace(/\/$/, "");
+    if (ON_GITHUB_PAGES) return "";
     return window.location.origin;
   }
 
@@ -84,11 +85,11 @@
       saveApiBase(url);
       try {
         await api("/api/health");
-        showToast(`Connected to ${BASE}`);
+        showToast("Connected to API");
         await ensureUser();
         await loadPlaylists();
       } catch (e) {
-        showToast(`Cannot reach ${BASE} (${e.message})`, 12000);
+        showToast(`Cannot reach API (${e.message})`, 12000);
       }
     });
   }
@@ -498,10 +499,10 @@
       await ensureUser();
     } catch (err) {
       const hint = DEV_MODE
-        ? `Cannot reach API at ${BASE} — check Addon server above or run run.bat locally.`
-        : `Cannot reach the API at ${BASE}. Maintainer: set GitHub secrets PUBLIC_API_URL + CONFIGURE_API_TOKEN, then re-run Pages (see docs/DEPLOY.md).`;
-      showToast(hint, 16000);
-      console.error(err);
+        ? "Cannot reach API — check the server field above or run run.bat locally."
+        : "Cannot reach the API. Try again in a moment, or hard-refresh this page (Ctrl+F5).";
+      showToast(hint, 12000);
+      console.error("API error:", BASE, err);
       return;
     }
     try {
