@@ -203,10 +203,18 @@ def create_app() -> Sanic:
                 request,
             )
         db.ensure_user(user_id)
-        body = response.json(build_manifest(user_id))
+        manifest_data = build_manifest(user_id)
         if request.method == "HEAD":
-            return response.empty(status=200, headers=dict(body.headers))
-        return body
+            payload = json.dumps(manifest_data, separators=(",", ":")).encode("utf-8")
+            return response.empty(
+                status=200,
+                headers={
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Content-Length": str(len(payload)),
+                    "Cache-Control": "no-cache",
+                },
+            )
+        return response.json(manifest_data)
 
     @app.route("/<user_id:str>/catalog/<type:str>/<path:path>", methods=["GET", "HEAD"])
     async def catalog_route(request: Request, user_id: str, type: str, path: str):

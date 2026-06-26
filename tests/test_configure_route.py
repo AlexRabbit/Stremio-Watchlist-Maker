@@ -26,3 +26,23 @@ def test_user_configure_page(client):
     _, resp = client.get(f"/{uid}/configure")
     assert resp.status == 200
     assert b"Stremio Watchlist Maker" in resp.body
+
+
+def test_manifest_allows_stremio_cors(client):
+    uid = "testuser1234567890"
+    client.post("/api/users", json={})
+    _, resp = client.get(
+        f"/{uid}/manifest.json",
+        headers={"Origin": "https://app.strem.io"},
+    )
+    assert resp.status == 200
+    assert resp.headers.get("access-control-allow-origin") == "*"
+
+
+def test_manifest_head_reports_content_length(client):
+    uid = "testuser1234567890"
+    client.post("/api/users", json={})
+    _, get_resp = client.get(f"/{uid}/manifest.json")
+    _, head_resp = client.head(f"/{uid}/manifest.json")
+    assert head_resp.status == 200
+    assert int(head_resp.headers.get("content-length", 0)) == len(get_resp.body)
