@@ -126,8 +126,13 @@ def create_app() -> Sanic:
         return response.json({"error": str(exc)}, status=500)
 
     @app.middleware("request")
+    async def cors_preflight_request(request: Request):
+        if request.method == "OPTIONS":
+            return _cors_headers(response.empty(status=204), request)
+
+    @app.middleware("request")
     async def protect_management_api(request: Request):
-        if request.method == "OPTIONS" or not request.path.startswith("/api/"):
+        if not request.path.startswith("/api/"):
             return
         if not _check_configure_api_access(request):
             raise SanicException("forbidden", status_code=403)
@@ -135,10 +140,6 @@ def create_app() -> Sanic:
     @app.middleware("response")
     async def cors_middleware(request: Request, resp: response.HTTPResponse):
         return _cors_headers(resp, request)
-
-    @app.options("/<path:path>")
-    async def cors_preflight(request: Request, path: str):
-        return _cors_headers(response.empty(), request)
 
     # --- Stremio protocol ---
     @app.get("/")
