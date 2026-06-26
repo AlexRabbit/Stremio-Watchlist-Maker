@@ -230,6 +230,19 @@
       if (pl.id === activePlaylistId) li.classList.add("active");
       ul.appendChild(li);
     });
+    const m = data.stremio_manifest;
+    const hint = $("manifest-hint");
+    if (hint && m) {
+      if (m.catalogs_total > m.catalogs_in_manifest) {
+        hint.hidden = false;
+        hint.innerHTML =
+          `Stremio limit: <strong>${m.catalogs_in_manifest}</strong> of <strong>${m.catalogs_total}</strong> channels appear in Discover. ` +
+          "All movies are still in the <strong>All</strong> channel. Reorder channels (manual sort) to choose which appear first.";
+      } else {
+        hint.hidden = true;
+        hint.textContent = "";
+      }
+    }
   }
 
   function escapeHtml(s) {

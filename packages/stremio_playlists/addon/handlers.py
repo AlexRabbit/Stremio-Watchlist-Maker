@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import unquote
 
@@ -24,28 +25,9 @@ ALL_CATALOG_ID = "all"
 STREMIO_CATALOG_TYPE = "channel"
 META_ITEM_TYPE = "movie"
 PAGE_SIZE = 100
-
-
-def _build_catalog_extras(filter_options: dict[str, list[str]]) -> list[dict[str, Any]]:
-    extras: list[dict[str, Any]] = []
-    for name in FILTER_EXTRA_ORDER:
-        options = filter_options.get(name) or []
-        if options:
-            extras.append(
-                {
-                    "name": name,
-                    "isRequired": False,
-                    "options": options,
-                    "optionsLimit": 1,
-                }
-            )
-    extras.extend(
-        [
-            {"name": "skip", "isRequired": False},
-            {"name": "search", "isRequired": False},
-        ]
-    )
-    return extras
+# Stremio stores manifest in the user profile; hard limit ~8192 bytes (JSON).
+MANIFEST_MAX_BYTES = 7800
+MANIFEST_NAME_MAX = 36
 
 
 def _minimal_catalog_extras() -> list[dict[str, Any]]:
@@ -55,80 +37,27 @@ def _minimal_catalog_extras() -> list[dict[str, Any]]:
     ]
 
 
-def _catalog_entry(
-    *,
-    catalog_type: str,
-    catalog_id: str,
-    name: str,
-    filter_options: dict[str, list[str]] | None = None,
-    genres: list[str] | None = None,
-) -> dict[str, Any]:
-    extras = (
-        _build_catalog_extras(filter_options)
-        if filter_options
-        else _minimal_catalog_extras()
+def _manifest_payload_size(manifest: dict[str, Any]) -> int:
+    return len(
+        json.dumps(manifest, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     )
-    entry: dict[str, Any] = {
-        "type": catalog_type,
+
+
+def _slim_catalog_entry(catalog_id: str, name: str) -> dict[str, Any]:
+    return {
+        "type": STREMIO_CATALOG_TYPE,
         "id": catalog_id,
-        "name": name,
-        "extra": extras,
+        "name": name[:MANIFEST_NAME_MAX],
     }
-    if genres:
-        entry["genres"] = genres
-    return entry
 
 
-def build_manifest(user_id: str) -> dict[str, Any]:
-    db.ensure_user(user_id)
-    playlists = db.list_playlists(user_id)
-    manifest_ver = db.get_manifest_version(user_id)
-
-    all_items = db.list_all_user_items(user_id)
-    # Column 3 filters are built from every movie across all channels.
-    global_filters = build_filter_options(all_items)
-
-    catalogs: list[dict[str, Any]] = []
-    if all_items:
-        all_genres = global_filters.get("genre") or []
-        catalogs.append(
-            _catalog_entry(
-                catalog_type=STREMIO_CATALOG_TYPE,
-                catalog_id=ALL_CATALOG_ID,
-                name="All",
-                filter_options=global_filters,
-                genres=all_genres,
-            )
-        )
-
-    for pl in playlists:
-        _items, total = db.list_items(pl.id, skip=0, limit=1)
-        if total == 0:
-            continue
-        pl_items, _ = db.list_items(pl.id, skip=0, limit=500)
-        pl_genres: set[str] = set()
-        for item in pl_items:
-            from stremio_playlists.addon.filters import item_genres
-
-            pl_genres.update(item_genres(item))
-        catalogs.append(
-            _catalog_entry(
-                catalog_type=STREMIO_CATALOG_TYPE,
-                catalog_id=f"{CATALOG_PREFIX}{pl.id}",
-                name=pl.name,
-                genres=sorted(pl_genres, key=str.lower)[:40] or None,
-            )
-        )
-
+def _manifest_shell(*, manifest_ver: int, catalogs: list[dict[str, Any]]) -> dict[str, Any]:
     pages_assets = "https://alexrabbit.github.io/Stremio-Watchlist-Maker/static"
     return {
         "id": ADDON_ID,
         "version": f"0.5.{manifest_ver}",
         "name": "Stremio Watchlist Maker",
-        "description": (
-            "Personal movie channels. Column 2: All + your channels. "
-            "Column 3: -sort shortcuts, genres, decades, directors, ratings."
-        ),
+        "description": "Personal movie channels in Stremio Discover.",
         "logo": f"{pages_assets}/logo.svg",
         "background": f"{pages_assets}/bg.svg",
         "resources": ["catalog", "meta"],
@@ -140,6 +69,67 @@ def build_manifest(user_id: str) -> dict[str, Any]:
             "configurationRequired": False,
         },
     }
+
+
+def manifest_stats(user_id: str) -> dict[str, int]:
+    """How many channels fit in Stremio's ~8KB manifest limit."""
+    db.ensure_user(user_id)
+    playlists = db.list_playlists(user_id)
+    non_empty = 0
+    for pl in playlists:
+        _items, total = db.list_items(pl.id, skip=0, limit=1)
+        if total > 0:
+            non_empty += 1
+    manifest = build_manifest(user_id)
+    shown = len(manifest.get("catalogs") or [])
+    has_all = any(c.get("id") == ALL_CATALOG_ID for c in manifest.get("catalogs") or [])
+    return {
+        "bytes": _manifest_payload_size(manifest),
+        "max_bytes": MANIFEST_MAX_BYTES,
+        "catalogs_in_manifest": shown - (1 if has_all else 0),
+        "catalogs_total": non_empty,
+    }
+
+
+def build_manifest(user_id: str) -> dict[str, Any]:
+    db.ensure_user(user_id)
+    playlists = db.list_playlists(user_id)
+    manifest_ver = db.get_manifest_version(user_id)
+
+    all_items = db.list_all_user_items(user_id)
+    catalogs: list[dict[str, Any]] = []
+    if all_items:
+        catalogs.append(
+            {
+                "type": STREMIO_CATALOG_TYPE,
+                "id": ALL_CATALOG_ID,
+                "name": "All",
+                "extra": _minimal_catalog_extras(),
+            }
+        )
+
+    for pl in playlists:
+        _items, total = db.list_items(pl.id, skip=0, limit=1)
+        if total == 0:
+            continue
+        catalogs.append(_slim_catalog_entry(pl.id, pl.name))
+        trial = _manifest_shell(manifest_ver=manifest_ver, catalogs=catalogs)
+        if _manifest_payload_size(trial) > MANIFEST_MAX_BYTES:
+            catalogs.pop()
+            log.warning(
+                "Manifest cap reached for user %s after %d channel(s); %d playlist(s) omitted from manifest",
+                user_id,
+                len(catalogs) - (1 if all_items else 0),
+                sum(1 for p in playlists if db.list_items(p.id, skip=0, limit=1)[1] > 0)
+                - (len(catalogs) - (1 if all_items else 0)),
+            )
+            break
+
+    manifest = _manifest_shell(manifest_ver=manifest_ver, catalogs=catalogs)
+    size = _manifest_payload_size(manifest)
+    if size > MANIFEST_MAX_BYTES:
+        log.error("Manifest still %d bytes for user %s (limit %d)", size, user_id, MANIFEST_MAX_BYTES)
+    return manifest
 
 
 def _parse_extra(extra: str) -> dict[str, str]:
@@ -160,7 +150,9 @@ def _parse_extra(extra: str) -> dict[str, str]:
 def _catalog_id_to_playlist(catalog_id: str) -> str | None:
     if catalog_id.startswith(CATALOG_PREFIX):
         return catalog_id[len(CATALOG_PREFIX) :]
-    return catalog_id if db.get_playlist(catalog_id) else None
+    if db.get_playlist(catalog_id):
+        return catalog_id
+    return None
 
 
 def _item_to_meta(

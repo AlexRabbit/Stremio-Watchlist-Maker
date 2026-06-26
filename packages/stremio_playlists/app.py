@@ -10,7 +10,7 @@ from sanic import Sanic, response
 from sanic.exceptions import NotFound, SanicException
 from sanic.request import Request
 
-from stremio_playlists.addon.handlers import build_manifest, handle_meta
+from stremio_playlists.addon.handlers import build_manifest, handle_meta, manifest_stats
 from stremio_playlists.config import ROOT, settings
 from stremio_playlists.db.repository import db
 from stremio_playlists.logging_setup import get_logger
@@ -279,7 +279,8 @@ def create_app() -> Sanic:
                             "sort_order": p.sort_order,
                         }
                         for p in pls
-                    ]
+                    ],
+                    "stremio_manifest": manifest_stats(user_id),
                 }
             )
         except Exception as exc:
