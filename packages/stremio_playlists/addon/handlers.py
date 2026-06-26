@@ -132,11 +132,11 @@ def build_manifest(user_id: str) -> dict[str, Any]:
         "logo": f"{pages_assets}/logo.svg",
         "background": f"{pages_assets}/bg.svg",
         "resources": ["catalog", "meta"],
-        "types": ["channel"],
+        "types": ["channel", "movie"],
         "catalogs": catalogs,
         "idPrefixes": ["tt"],
         "behaviorHints": {
-            "configurable": True,
+            "configurable": False,
             "configurationRequired": False,
         },
     }

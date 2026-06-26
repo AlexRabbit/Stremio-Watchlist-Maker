@@ -63,7 +63,19 @@
   }
 
   function toStremioInstallUrl(manifestHttpUrl) {
+    try {
+      const u = new URL(manifestHttpUrl);
+      if (u.protocol === "https:") {
+        return `stremio://${u.host}${u.pathname}${u.search}`;
+      }
+    } catch (_) { /* fall through */ }
     return `stremio:///addons?addon=${encodeURIComponent(manifestHttpUrl)}`;
+  }
+
+  function stremioInstallCandidates(manifestHttpUrl) {
+    const direct = toStremioInstallUrl(manifestHttpUrl);
+    const encoded = `stremio:///addons?addon=${encodeURIComponent(manifestHttpUrl)}`;
+    return direct === encoded ? [direct, manifestHttpUrl] : [direct, encoded, manifestHttpUrl];
   }
 
   function saveApiBase(url) {
@@ -354,13 +366,15 @@
     try {
       await navigator.clipboard.writeText(manifestUrl);
     } catch (_) { /* optional */ }
-    const link = document.createElement("a");
-    link.href = toStremioInstallUrl(manifestUrl);
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    showToast("Addon URL copied. Stremio should open — if install fails, paste the URL in Addons → paste link.");
+    for (const href of stremioInstallCandidates(manifestUrl)) {
+      const link = document.createElement("a");
+      link.href = href;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    showToast("Addon URL copied. Stremio should open — if not, Addons → paste link (Ctrl+V).");
   });
 
   bindClick("btn-copy-url", () => {

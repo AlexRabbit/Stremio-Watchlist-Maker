@@ -23,6 +23,30 @@ STATIC_DIR = ROOT / "web" / "static"
 USER_ID_RE = re.compile(r"^[a-zA-Z0-9]{8,64}$")
 
 
+def _is_stremio_protocol_path(path: str) -> bool:
+    """Manifest, catalog, meta, and per-user configure — must be readable by Stremio."""
+    parts = path.strip("/").split("/")
+    if len(parts) == 2 and parts[1] == "manifest.json":
+        return USER_ID_RE.match(parts[0]) is not None
+    if len(parts) >= 3 and parts[1] in ("catalog", "meta", "configure"):
+        return USER_ID_RE.match(parts[0]) is not None
+    return False
+
+
+def _stremio_public_headers(
+    resp: response.HTTPResponse, request: Request | None = None
+) -> response.HTTPResponse:
+    """Stremio Desktop/Web fetch manifests from their own origin — never lock to GitHub Pages."""
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Accept"
+    resp.headers["Access-Control-Max-Age"] = "86400"
+    if request and request.method in ("GET", "HEAD") and request.path.endswith("/manifest.json"):
+        resp.headers["Cache-Control"] = "no-cache"
+        resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    return resp
+
+
 def _valid_user_id(user_id: str) -> bool:
     return bool(user_id and USER_ID_RE.match(user_id))
 
@@ -128,6 +152,8 @@ def create_app() -> Sanic:
     @app.middleware("request")
     async def cors_preflight_request(request: Request):
         if request.method == "OPTIONS":
+            if _is_stremio_protocol_path(request.path):
+                return _stremio_public_headers(response.empty(status=204), request)
             return _cors_headers(response.empty(status=204), request)
 
     @app.middleware("request")
@@ -139,6 +165,8 @@ def create_app() -> Sanic:
 
     @app.middleware("response")
     async def cors_middleware(request: Request, resp: response.HTTPResponse):
+        if _is_stremio_protocol_path(request.path):
+            return _stremio_public_headers(resp, request)
         return _cors_headers(resp, request)
 
     # --- Stremio protocol ---
@@ -176,7 +204,6 @@ def create_app() -> Sanic:
             )
         db.ensure_user(user_id)
         body = response.json(build_manifest(user_id))
-        body.headers["Cache-Control"] = "no-cache"
         if request.method == "HEAD":
             return response.empty(status=200, headers=dict(body.headers))
         return body

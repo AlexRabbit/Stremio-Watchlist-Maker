@@ -46,7 +46,7 @@ def seeded_db(monkeypatch):
 def test_manifest_lists_playlists_with_genres_field(seeded_db):
     uid, pid, _ = seeded_db
     manifest = build_manifest(uid)
-    assert manifest["types"] == ["channel"]
+    assert manifest["types"] == ["channel", "movie"]
     catalog = next(c for c in manifest["catalogs"] if c["id"] == f"{CATALOG_PREFIX}{pid}")
     assert catalog["type"] == "channel"
     assert "genres" in catalog
