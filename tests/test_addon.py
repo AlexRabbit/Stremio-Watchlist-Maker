@@ -52,10 +52,11 @@ def test_manifest_lists_playlists_with_genres_field(seeded_db):
     assert "genres" in catalog
     assert "Horror" in catalog["genres"]
     extra_names = {e["name"] for e in catalog["extra"]}
-    assert "genre" in extra_names
-    assert "director" in extra_names
-    assert "year" in extra_names
-    assert "rating" in extra_names
+    assert extra_names == {"skip", "search"}
+    all_catalog = next(c for c in manifest["catalogs"] if c["id"] == ALL_CATALOG_ID)
+    all_extra = {e["name"] for e in all_catalog["extra"]}
+    assert "genre" in all_extra
+    assert "director" in all_extra
 
 
 def test_manifest_has_all_and_playlist_only(seeded_db):

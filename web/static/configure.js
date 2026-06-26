@@ -74,6 +74,13 @@
     if (userId) saveUser(userId);
   }
 
+  function setupProductionUi() {
+    if (!ON_GITHUB_PAGES || DEV_MODE) return;
+    document.body.classList.add("deploy-private");
+    const row = $("api-server-row");
+    if (row) row.hidden = true;
+  }
+
   function setupApiServerUi() {
     if (!DEV_MODE) return;
     const row = $("api-server-row");
@@ -340,7 +347,10 @@
 
   bindClick("btn-install-stremio", async () => {
     const manifestUrl = $("addon-url")?.value;
-    if (!manifestUrl) return;
+    if (!manifestUrl) {
+      showToast("Create a User ID first.");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(manifestUrl);
     } catch (_) { /* optional */ }
@@ -350,7 +360,7 @@
     document.body.appendChild(link);
     link.click();
     link.remove();
-    showToast("Opening Stremio… If no popup: Addons → paste the copied URL.");
+    showToast("Addon URL copied. Stremio should open — if install fails, paste the URL in Addons → paste link.");
   });
 
   bindClick("btn-copy-url", () => {
@@ -492,6 +502,7 @@
     });
   }
 
+  setupProductionUi();
   setupApiServerUi();
 
   (async () => {

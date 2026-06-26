@@ -48,23 +48,34 @@ def _build_catalog_extras(filter_options: dict[str, list[str]]) -> list[dict[str
     return extras
 
 
+def _minimal_catalog_extras() -> list[dict[str, Any]]:
+    return [
+        {"name": "skip", "isRequired": False},
+        {"name": "search", "isRequired": False},
+    ]
+
+
 def _catalog_entry(
     *,
     catalog_type: str,
     catalog_id: str,
     name: str,
-    filter_options: dict[str, list[str]],
+    filter_options: dict[str, list[str]] | None = None,
+    genres: list[str] | None = None,
 ) -> dict[str, Any]:
-    genre_options = filter_options.get("genre") or []
+    extras = (
+        _build_catalog_extras(filter_options)
+        if filter_options
+        else _minimal_catalog_extras()
+    )
     entry: dict[str, Any] = {
         "type": catalog_type,
         "id": catalog_id,
         "name": name,
-        "extra": _build_catalog_extras(filter_options),
+        "extra": extras,
     }
-    # Required for Stremio Genre dropdown UI (legacy + current clients).
-    if genre_options:
-        entry["genres"] = genre_options
+    if genres:
+        entry["genres"] = genres
     return entry
 
 
@@ -79,12 +90,14 @@ def build_manifest(user_id: str) -> dict[str, Any]:
 
     catalogs: list[dict[str, Any]] = []
     if all_items:
+        all_genres = global_filters.get("genre") or []
         catalogs.append(
             _catalog_entry(
                 catalog_type=STREMIO_CATALOG_TYPE,
                 catalog_id=ALL_CATALOG_ID,
                 name="All",
                 filter_options=global_filters,
+                genres=all_genres,
             )
         )
 
@@ -92,15 +105,22 @@ def build_manifest(user_id: str) -> dict[str, Any]:
         _items, total = db.list_items(pl.id, skip=0, limit=1)
         if total == 0:
             continue
+        pl_items, _ = db.list_items(pl.id, skip=0, limit=500)
+        pl_genres: set[str] = set()
+        for item in pl_items:
+            from stremio_playlists.addon.filters import item_genres
+
+            pl_genres.update(item_genres(item))
         catalogs.append(
             _catalog_entry(
                 catalog_type=STREMIO_CATALOG_TYPE,
                 catalog_id=f"{CATALOG_PREFIX}{pl.id}",
                 name=pl.name,
-                filter_options=global_filters,
+                genres=sorted(pl_genres, key=str.lower)[:40] or None,
             )
         )
 
+    pages_assets = "https://alexrabbit.github.io/Stremio-Watchlist-Maker/static"
     return {
         "id": ADDON_ID,
         "version": f"0.5.{manifest_ver}",
@@ -109,8 +129,8 @@ def build_manifest(user_id: str) -> dict[str, Any]:
             "Personal movie channels. Column 2: All + your channels. "
             "Column 3: -sort shortcuts, genres, decades, directors, ratings."
         ),
-        "logo": f"{settings.base_url}/static/logo.svg",
-        "background": f"{settings.base_url}/static/bg.svg",
+        "logo": f"{pages_assets}/logo.svg",
+        "background": f"{pages_assets}/bg.svg",
         "resources": ["catalog", "meta"],
         "types": ["channel"],
         "catalogs": catalogs,

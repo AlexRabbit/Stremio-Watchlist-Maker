@@ -100,6 +100,10 @@ textarea { width: 100%; resize: vertical; }
 .btn-file { cursor: pointer; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: flex-end; }
+.deploy-private .install-box,
+.deploy-private #api-server-row {
+  display: none !important;
+}
 .install-box { width: 100%; margin-bottom: 0.5rem; }
 .install-box label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; }
 .addon-url-input { width: 100%; font-family: ui-monospace, monospace; font-size: 0.8rem; }

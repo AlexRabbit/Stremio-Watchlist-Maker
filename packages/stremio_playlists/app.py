@@ -167,7 +167,7 @@ def create_app() -> Sanic:
         html_path = ROOT / "web" / "configure.html"
         return await response.file(html_path)
 
-    @app.get("/<user_id:str>/manifest.json")
+    @app.route("/<user_id:str>/manifest.json", methods=["GET", "HEAD"])
     async def manifest(request: Request, user_id: str):
         if not _valid_user_id(user_id):
             return _cors_headers(
@@ -175,26 +175,43 @@ def create_app() -> Sanic:
                 request,
             )
         db.ensure_user(user_id)
-        return response.json(build_manifest(user_id))
+        body = response.json(build_manifest(user_id))
+        body.headers["Cache-Control"] = "no-cache"
+        if request.method == "HEAD":
+            return response.empty(status=200, headers=dict(body.headers))
+        return body
 
-    @app.get("/<user_id:str>/catalog/<type:str>/<path:path>")
+    @app.route("/<user_id:str>/catalog/<type:str>/<path:path>", methods=["GET", "HEAD"])
     async def catalog_route(request: Request, user_id: str, type: str, path: str):
         if not path.endswith(".json"):
-            return response.json({"metas": []})
+            body = response.json({"metas": []})
+            if request.method == "HEAD":
+                return response.empty(status=200, headers=dict(body.headers))
+            return body
         inner = path[:-5]
         from stremio_playlists.addon.handlers import handle_catalog
 
         if "/" in inner:
             catalog_id, extra = inner.split("/", 1)
-            return response.json(await handle_catalog(user_id, catalog_id, extra))
-        return response.json(await handle_catalog(user_id, inner))
+            body = response.json(await handle_catalog(user_id, catalog_id, extra))
+        else:
+            body = response.json(await handle_catalog(user_id, inner))
+        if request.method == "HEAD":
+            return response.empty(status=200, headers=dict(body.headers))
+        return body
 
-    @app.get("/<user_id:str>/meta/<type:str>/<path:path>")
+    @app.route("/<user_id:str>/meta/<type:str>/<path:path>", methods=["GET", "HEAD"])
     async def meta_route(request: Request, user_id: str, type: str, path: str):
         if not path.endswith(".json"):
-            return response.json({"meta": None})
+            body = response.json({"meta": None})
+            if request.method == "HEAD":
+                return response.empty(status=200, headers=dict(body.headers))
+            return body
         meta_id = path[:-5]
-        return response.json(handle_meta(user_id, type, meta_id))
+        body = response.json(handle_meta(user_id, type, meta_id))
+        if request.method == "HEAD":
+            return response.empty(status=200, headers=dict(body.headers))
+        return body
 
     # --- Management API ---
     @app.get("/api/health")
