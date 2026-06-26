@@ -28,7 +28,7 @@ jobs:
           # Set PUBLIC_API_URL in repo Settings → Variables after deploying Render
           PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
         run: |
-          API="${PUBLIC_API_URL:-https://stremio-channel-organizer.onrender.com}"
+          API="${PUBLIC_API_URL:?Set PUBLIC_API_URL in repo Actions variables}"
           API="${API%/}"
           echo "Using API base: $API"
           sed -i "s|__CHANNEL_ORGANIZER_API__|${API}|g" web/configure.html

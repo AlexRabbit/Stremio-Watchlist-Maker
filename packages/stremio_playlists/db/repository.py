@@ -597,9 +597,11 @@ class Database:
             ],
         }
 
-    def import_user_data(self, user_id: str, data: dict[str, Any]) -> int:
-        count = 0
+    def import_user_data(self, user_id: str, data: dict[str, Any]) -> dict[str, int]:
         self.ensure_user(user_id)
+        playlists_created = 0
+        items_imported = 0
+        items_skipped = 0
         for pl_data in data.get("playlists", []):
             pid = self.create_playlist(
                 user_id,
@@ -608,10 +610,15 @@ class Database:
                 pl_data.get("sort_by", "position"),
                 pl_data.get("sort_order", "asc"),
             )
+            playlists_created += 1
             for item in pl_data.get("items", []):
+                imdb_id = (item.get("imdb_id") or "").strip()
+                if not imdb_id:
+                    items_skipped += 1
+                    continue
                 if self.add_item(
                     pid,
-                    item.get("imdb_id", ""),
+                    imdb_id,
                     item.get("title", "Unknown"),
                     year=item.get("year"),
                     director=item.get("director", ""),
@@ -619,8 +626,16 @@ class Database:
                     rating=item.get("rating"),
                     source=item.get("source", "import"),
                 ):
-                    count += 1
-        return count
+                    items_imported += 1
+                else:
+                    items_skipped += 1
+        if playlists_created:
+            self.bump_manifest_version(user_id)
+        return {
+            "playlists_created": playlists_created,
+            "imported_items": items_imported,
+            "items_skipped": items_skipped,
+        }
 
 
 db = Database()

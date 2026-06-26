@@ -25,18 +25,19 @@ Do these **once** so Pages + API work for all users.
 4. Push to `main` (or run **Actions → GitHub Pages → Run workflow**)
 5. Confirm: https://alexrabbit.github.io/stremio/configure.html loads *(not 404)*
 
-### Step 2 — Deploy the shared API (Render)
+### Step 2 — Deploy the shared API
 
-GitHub Pages **cannot** run Python, SQLite, or Stremio `manifest.json`. Host the API once on Render:
+**Option A — Your VPS (recommended)**
 
-1. Create account at [render.com](https://render.com)
-2. **New → Blueprint** → connect `AlexRabbit/stremio` repo
-3. Render reads `render.yaml` and creates `stremio-channel-organizer`
-4. After deploy, set **Environment** on Render:
-   - `BASE_URL` = `https://stremio-channel-organizer.onrender.com` *(your actual Render URL)*
-5. Health check: `https://YOUR-RENDER-URL.onrender.com/api/health` → `{"status":"ok",...}`
+See [deploy/vps/README.md](deploy/vps/README.md) and local pack scripts in `SPV/stremio-channel-organizer/`.
 
-> Free Render spins down when idle; first request may take ~30s.
+Set GitHub variable `PUBLIC_API_URL` to `https://YOUR_PUBLIC_HOSTNAME` (domain only).
+
+**Option B — Render (free tier)**
+
+1. [render.com](https://render.com) → **Blueprint** → connect repo
+2. Set `BASE_URL` to your Render HTTPS URL
+3. Set `PUBLIC_API_URL` in GitHub variables
 
 ### Step 3 — Wire Pages to your API
 

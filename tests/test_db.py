@@ -50,4 +50,4 @@ def test_export_import(db_tmp):
     data = db_tmp.export_user_data(uid)
     new_uid = db_tmp.create_user("imported")
     count = db_tmp.import_user_data(new_uid, data)
-    assert count >= 1
+    assert count["imported_items"] >= 1
