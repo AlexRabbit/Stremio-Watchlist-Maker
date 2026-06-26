@@ -183,6 +183,9 @@
       if (err.message === "Failed to fetch") {
         throw new Error("Cannot reach the API (offline, CORS, or HTTPS certificate). Check that the backend is running.");
       }
+      if (String(err.message).toLowerCase() === "forbidden") {
+        throw new Error("API auth mismatch — update GitHub CONFIGURE_API_TOKEN and rerun the Pages workflow.");
+      }
       throw err;
     } finally {
       clearTimeout(timer);
