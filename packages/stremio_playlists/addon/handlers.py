@@ -104,7 +104,7 @@ def build_manifest(user_id: str) -> dict[str, Any]:
     return {
         "id": ADDON_ID,
         "version": f"0.5.{manifest_ver}",
-        "name": "Channel Organizer",
+        "name": "Stremio Watchlist Maker",
         "description": (
             "Personal movie channels. Column 2: All + your channels. "
             "Column 3: -sort shortcuts, genres, decades, directors, ratings."

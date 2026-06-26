@@ -24,7 +24,7 @@ BULLET_RE = re.compile(r"^\s*[-*•]\s+(.+?)(?:\s*\((\d{4})\))?\s*$")
 IMDB_LINE_RE = re.compile(r"(tt\d{7,8})")
 YEAR_PAREN_RE = re.compile(r"\((\d{4})\)")
 TOC_PAGE_SUFFIX_RE = re.compile(r"/(\d+)/?$")
-USER_AGENT = "ChannelOrganizer/0.5 (+https://github.com/AlexRabbit/stremio)"
+USER_AGENT = "StremioWatchlistMaker/0.5 (+https://github.com/AlexRabbit/Stremio-Watchlist-Maker)"
 
 
 @dataclass

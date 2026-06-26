@@ -499,7 +499,7 @@
     } catch (err) {
       const hint = DEV_MODE
         ? `Cannot reach API at ${BASE} — check Addon server above or run run.bat locally.`
-        : `Cannot reach the API at ${BASE}. If you maintain this site: set PUBLIC_API_URL or deploy/public-api.url, then re-run GitHub Pages (see docs/DEPLOY.md).`;
+        : `Cannot reach the API at ${BASE}. Maintainer: set GitHub secrets PUBLIC_API_URL + CONFIGURE_API_TOKEN, then re-run Pages (see docs/DEPLOY.md).`;
       showToast(hint, 16000);
       console.error(err);
       return;

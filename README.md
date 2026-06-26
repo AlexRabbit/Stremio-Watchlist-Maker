@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/static/logo.svg" width="96" alt="Channel Organizer logo">
+  <img src="web/static/logo.svg" width="96" alt="Stremio Watchlist Maker logo">
 </p>
 
 <h1 align="center">🎬 Stremio Watchlist Maker</h1>

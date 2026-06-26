@@ -13,7 +13,9 @@ Never commit:
 
 ## API (maintainer server)
 
-- `LOCK_CONFIGURE_API` limits `/api/*` to the official GitHub Pages configure origin
+Official configure page: **https://alexrabbit.github.io/Stremio-Watchlist-Maker/configure.html**
+
+- `LOCK_CONFIGURE_API` limits `/api/*` to that GitHub Pages path
 - `API_TOKEN` is set on the server and injected at Pages build time via GitHub **Secrets** (not stored in git)
 - Stremio routes (`manifest`, `catalog`, `meta`) stay readable per user ID (required by Stremio)
 

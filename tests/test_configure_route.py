@@ -25,4 +25,4 @@ def test_user_configure_page(client):
     uid = "testuser1234567890"
     _, resp = client.get(f"/{uid}/configure")
     assert resp.status == 200
-    assert b"Channel Organizer" in resp.body
+    assert b"Stremio Watchlist Maker" in resp.body

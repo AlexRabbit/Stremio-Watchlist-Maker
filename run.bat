@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Channel Organizer
+title Stremio Watchlist Maker
 cd /d "%~dp0"
 
 echo ========================================
-echo  Channel Organizer  v0.5
+echo  Stremio Watchlist Maker  v0.5
 echo ========================================
 echo.
 
