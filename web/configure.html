@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="channel-organizer-api" content="__CHANNEL_ORGANIZER_API__">
   <title>Channel Organizer — Configure</title>
-  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/configure.css">
+  <link rel="icon" href="static/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="static/configure.css">
 </head>
 <body>
   <div class="bg-bubbles" aria-hidden="true"></div>
@@ -22,6 +23,11 @@
   <main class="layout">
     <section class="panel glass" id="setup-panel">
       <h2>Your workspace</h2>
+      <div class="field-row" id="api-server-row" hidden>
+        <label for="api-server">Dev: API server</label>
+        <input id="api-server" type="url" placeholder="http://127.0.0.1:7010" spellcheck="false">
+        <button type="button" id="btn-save-api" class="btn">Connect</button>
+      </div>
       <div class="field-row">
         <label for="user-id">User ID</label>
         <input id="user-id" type="text" readonly placeholder="Generate or paste saved ID">
@@ -120,6 +126,6 @@
   <footer class="footer">
     <p>Open-source · <a href="https://github.com/AlexRabbit/stremio" target="_blank" rel="noopener">GitHub</a></p>
   </footer>
-  <script src="/static/configure.js?v=6"></script>
+  <script src="static/configure.js?v=8"></script>
 </body>
 </html>

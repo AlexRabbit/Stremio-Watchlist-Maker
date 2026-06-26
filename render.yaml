@@ -1,0 +1,23 @@
+# One-click deploy for the shared API (all users share this — no local run.bat).
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: stremio-channel-organizer
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: PYTHONPATH=packages python main.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: BASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://alexrabbit.github.io
+      - key: LOG_LEVEL
+        value: INFO
+      - key: API_TOKEN
+        sync: false

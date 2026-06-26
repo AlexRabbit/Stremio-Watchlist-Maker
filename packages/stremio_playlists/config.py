@@ -68,7 +68,9 @@ class Settings:
             import_rate_limit_per_min=int(
                 os.getenv("IMPORT_RATE_LIMIT_PER_MIN", "30")
             ),
-            cors_origins=os.getenv("CORS_ORIGINS", "*"),
+            cors_origins=os.getenv(
+                "CORS_ORIGINS", "https://alexrabbit.github.io,*"
+            ),
             api_token=os.getenv("API_TOKEN", "").strip(),
             backup_schema_version=int(os.getenv("BACKUP_SCHEMA_VERSION", "1")),
             stremio_streaming_server=os.getenv(

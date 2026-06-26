@@ -1,9 +1,27 @@
 (() => {
-  const BASE = (() => {
-    const api = new URLSearchParams(window.location.search).get("api");
-    if (api) return api.replace(/\/$/, "");
+  const PLACEHOLDER_API = "__CHANNEL_ORGANIZER_API__";
+  const FALLBACK_PUBLIC_API = "https://stremio-channel-organizer.onrender.com";
+  const DEV_MODE = new URLSearchParams(window.location.search).has("dev");
+
+  function metaApi() {
+    const raw = document.querySelector('meta[name="channel-organizer-api"]')?.content?.trim();
+    if (raw && raw !== PLACEHOLDER_API) return raw.replace(/\/$/, "");
+    return "";
+  }
+
+  function apiBase() {
+    const fromQuery = new URLSearchParams(window.location.search).get("api");
+    if (fromQuery) return fromQuery.replace(/\/$/, "");
+    if (DEV_MODE) {
+      return (localStorage.getItem("playlist_api_base") || "http://127.0.0.1:7010").replace(/\/$/, "");
+    }
+    const baked = metaApi();
+    if (baked) return baked;
+    if (/\.github\.io$/i.test(window.location.hostname)) return FALLBACK_PUBLIC_API;
     return window.location.origin;
-  })();
+  }
+
+  let BASE = apiBase();
   const params = new URLSearchParams(window.location.search);
   const pathUserId = (() => {
     const parts = window.location.pathname.split("/").filter(Boolean);
@@ -37,6 +55,34 @@
 
   function toStremioInstallUrl(manifestHttpUrl) {
     return `stremio:///addons?addon=${encodeURIComponent(manifestHttpUrl)}`;
+  }
+
+  function saveApiBase(url) {
+    BASE = url.replace(/\/$/, "");
+    localStorage.setItem("playlist_api_base", BASE);
+    const input = $("api-server");
+    if (input) input.value = BASE;
+    if (userId) saveUser(userId);
+  }
+
+  function setupApiServerUi() {
+    if (!DEV_MODE) return;
+    const row = $("api-server-row");
+    const input = $("api-server");
+    if (row) row.hidden = false;
+    if (input) input.value = BASE;
+    bindClick("btn-save-api", async () => {
+      const url = ($("api-server")?.value || "").trim() || "http://127.0.0.1:7010";
+      saveApiBase(url);
+      try {
+        await api("/api/health");
+        showToast(`Connected to ${BASE}`);
+        await ensureUser();
+        await loadPlaylists();
+      } catch (e) {
+        showToast(`Cannot reach ${BASE} (${e.message})`, 12000);
+      }
+    });
   }
 
   function saveUser(id) {
@@ -374,11 +420,16 @@
     });
   }
 
+  setupApiServerUi();
+
   (async () => {
     try {
       await ensureUser();
     } catch (err) {
-      showToast("Cannot reach server — close this tab, run run.bat, then reload.");
+      const hint = DEV_MODE
+        ? "Cannot reach API — check Addon server above or run run.bat locally."
+        : "Cannot reach the shared API yet. The site maintainer must deploy the backend (see docs/DEPLOY.md).";
+      showToast(hint, 14000);
       console.error(err);
       return;
     }

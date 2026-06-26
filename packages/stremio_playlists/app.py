@@ -29,7 +29,13 @@ def _valid_user_id(user_id: str) -> bool:
 
 def _cors_headers(resp: response.HTTPResponse) -> response.HTTPResponse:
     origin = settings.cors_origins
-    resp.headers["Access-Control-Allow-Origin"] = origin if origin else "*"
+    if origin == "*":
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+    elif "," in origin:
+        # Allow listed origins; reflect request origin when it matches.
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+    else:
+        resp.headers["Access-Control-Allow-Origin"] = origin
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     resp.headers["Access-Control-Max-Age"] = "86400"

@@ -1,106 +1,102 @@
 # Deploy Channel Organizer
 
-The **configure page** (`web/`) can live on GitHub Pages. The **addon API** (manifest, catalog, import) must run on a machine Stremio can reach.
+## For everyone (users)
+
+**You do not run anything locally.**
+
+1. Open **https://alexrabbit.github.io/stremio/configure.html**
+2. Click **New ID** → create channels → import lists
+3. Install addon in Stremio (pink button)
+4. Watch in **Discover → Channel**
+
+The configure page is on **GitHub Pages**. Your playlists live on a **shared API** hosted by the project (Render).
 
 ---
 
-## Option A — Local only (default)
+## For the repo owner (one-time setup)
 
-1. Run `run.bat` (Windows) or `python main.py`
-2. Open `http://127.0.0.1:7010/configure`
-3. Install addon: `http://127.0.0.1:7010/{userId}/manifest.json`
+Do these **once** so Pages + API work for all users.
 
-Stremio on the same PC can use `127.0.0.1` directly.
+### Step 1 — Enable GitHub Pages
 
----
+1. Push this repo to `AlexRabbit/stremio` (project site → `/stremio/` path)
+2. GitHub → **Settings → Pages**
+3. **Build and deployment → Source:** `GitHub Actions`
+4. Push to `main` (or run **Actions → GitHub Pages → Run workflow**)
+5. Confirm: https://alexrabbit.github.io/stremio/configure.html loads *(not 404)*
 
-## Option B — GitHub Pages (configure UI only)
+### Step 2 — Deploy the shared API (Render)
 
-Pages hosts the static configure UI. Imports still hit your Python server.
+GitHub Pages **cannot** run Python, SQLite, or Stremio `manifest.json`. Host the API once on Render:
 
-### Steps
+1. Create account at [render.com](https://render.com)
+2. **New → Blueprint** → connect `AlexRabbit/stremio` repo
+3. Render reads `render.yaml` and creates `stremio-channel-organizer`
+4. After deploy, set **Environment** on Render:
+   - `BASE_URL` = `https://stremio-channel-organizer.onrender.com` *(your actual Render URL)*
+5. Health check: `https://YOUR-RENDER-URL.onrender.com/api/health` → `{"status":"ok",...}`
 
-1. **Push this repo to GitHub** (public or private)
+> Free Render spins down when idle; first request may take ~30s.
 
-2. **Enable Pages**  
-   GitHub → **Settings → Pages** → Source: **GitHub Actions**  
-   (or deploy branch `gh-pages` from `/web`)
+### Step 3 — Wire Pages to your API
 
-3. **Workflow** (already included): `.github/workflows/pages.yml`  
-   On push to `main`, it publishes the `web/` folder.
+1. GitHub repo → **Settings → Secrets and variables → Actions → Variables**
+2. Add variable: `PUBLIC_API_URL` = `https://stremio-channel-organizer.onrender.com`
+3. Re-run **GitHub Pages** workflow (or push any change to `web/`)
 
-4. **Point the UI at your backend**  
-   Edit `web/static/configure.js` — set the API base near the top:
-   ```javascript
-   const DEFAULT_API = "https://your-tunnel-or-vps.example";
-   ```
-   Or use the configure page query param if supported: `?api=https://...`
+The workflow injects that URL into `configure.html` at build time.
 
-5. **Your Pages URL** will look like:
-   ```
-   https://YOUR_USERNAME.github.io/stremio/configure.html
-   ```
+### Step 4 — Verify end-to-end
 
-6. **Install manifest from your server**, not Pages:
-   ```
-   https://your-api.example/{userId}/manifest.json
-   ```
+| Check | URL |
+|-------|-----|
+| Configure UI | https://alexrabbit.github.io/stremio/configure.html |
+| API health | `https://YOUR-RENDER-URL.onrender.com/api/health` |
+| Manifest (example) | `https://YOUR-RENDER-URL.onrender.com/{userId}/manifest.json` |
 
-### What Pages cannot do
-
-- Serve `manifest.json` (needs dynamic user catalogs)
-- Run imports / SQLite / background workers
-- Proxy Stremio catalog requests
+Open configure → **New ID** → should work without `run.bat`.
 
 ---
 
-## Option C — Remote backend (VPS / cloud)
-
-1. Deploy the Python app to Fly.io, Railway, a VPS, etc.
-2. Set environment variables:
-   ```env
-   HOST=0.0.0.0
-   PORT=7010
-   BASE_URL=https://your-domain.example
-   API_TOKEN=generate-a-long-random-token
-   CORS_ORIGINS=https://YOUR_USERNAME.github.io
-   ```
-3. Put HTTPS in front (Caddy, nginx, or platform TLS)
-4. Install: `https://your-domain.example/{userId}/manifest.json`
-
-**Security:** Never expose port 7010 without `API_TOKEN` on a public IP. See [SECURITY.md](SECURITY.md).
-
----
-
-## Option D — Tunnel for testing
-
-```bash
-ngrok http 7010
-```
-
-1. Set `BASE_URL` in `.env` to the ngrok HTTPS URL
-2. Restart the server
-3. Install manifest: `https://xxxx.ngrok-free.app/{userId}/manifest.json`
-4. Optional: host configure UI on Pages pointing at the ngrok URL
-
----
-
-## Stremio install deep link
-
-Encode your manifest URL:
+## Architecture
 
 ```
-stremio:///addons?addon=https%3A%2F%2Fyour-host%2F{userId}%2Fmanifest.json
+Users browser
+    → alexrabbit.github.io/stremio/configure.html   (static UI)
+    → YOUR-RENDER-URL.onrender.com/api/*          (channels, imports)
+Stremio app
+    → YOUR-RENDER-URL.onrender.com/{userId}/manifest.json
 ```
-
-On Windows, `stremio://127.0.0.1:7010/...` may strip the port — use the `addons?addon=` form instead.
 
 ---
 
-## Checklist before going public
+## Local development (optional)
 
-- [ ] `.env` is **not** committed (see `.gitignore`)
-- [ ] `logs/` and `data/*.db` are **not** committed
-- [ ] `API_TOKEN` set on any internet-facing deploy
-- [ ] `BASE_URL` matches your public HTTPS URL
-- [ ] Run tests: `PYTHONPATH=packages python -m pytest tests/ -q`
+Only for contributors — not required for users.
+
+```bat
+run.bat
+```
+
+- UI: http://127.0.0.1:7010/configure  
+- Or Pages UI with `?dev=1&api=http://127.0.0.1:7010`
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| **404 on GitHub Pages** | Enable Pages → GitHub Actions; push `web/`; wait for workflow |
+| **Configure can't reach API** | Deploy Render; set `PUBLIC_API_URL`; redeploy Pages |
+| **Stremio install fails** | Manifest URL must be **Render URL**, not Pages URL |
+| **Free Render slow** | First request wakes service; upgrade plan or use paid host |
+| **Data lost on Render free** | Free tier disk is ephemeral — use paid disk or external DB for production |
+
+---
+
+## Stremio install link
+
+```
+stremio:///addons?addon=https%3A%2F%2FYOUR-RENDER-URL.onrender.com%2F{userId}%2Fmanifest.json
+```
