@@ -39,7 +39,7 @@
     }
     return null;
   })();
-  let userId = pathUserId || params.get("user") || localStorage.getItem("playlist_user_id") || "";
+  let userId = pathUserId || params.get("user") || "";
   let activePlaylistId = null;
   let itemsSkip = 0;
   let itemsTotal = 0;
@@ -109,8 +109,7 @@
       try {
         await api("/api/health");
         showToast("Connected to API");
-        await ensureUser();
-        await loadPlaylists();
+        if (userId) await loadPlaylists();
       } catch (e) {
         showToast(`Cannot reach API (${e.message})`, 12000);
       }
@@ -119,14 +118,38 @@
 
   function saveUser(id) {
     userId = id;
-    localStorage.setItem("playlist_user_id", id);
     const userInput = $("user-id");
     if (userInput) userInput.value = id;
     const url = new URL(window.location.href);
     url.searchParams.set("user", id);
     history.replaceState({}, "", url);
     const addonUrl = $("addon-url");
-    if (addonUrl) addonUrl.value = `${BASE}/${id}/manifest.json`;
+    if (addonUrl && BASE) addonUrl.value = `${BASE}/${id}/manifest.json`;
+    updateWorkspaceUi();
+  }
+
+  function configurePageUrl() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("api");
+    url.searchParams.delete("dev");
+    if (userId) url.searchParams.set("user", userId);
+    else url.searchParams.delete("user");
+    return url.toString();
+  }
+
+  function updateWorkspaceUi() {
+    const hasUser = Boolean(userId);
+    document.body.classList.toggle("no-workspace", !hasUser);
+    document.body.classList.toggle("has-workspace", hasUser);
+    const btn = $("btn-new-user");
+    if (btn) btn.textContent = hasUser ? "New ID" : "New ID First";
+    const userInput = $("user-id");
+    if (userInput && !hasUser) {
+      userInput.value = "";
+      userInput.placeholder = "None yet — click New ID First";
+    }
+    const addonUrl = $("addon-url");
+    if (addonUrl && !hasUser) addonUrl.value = "";
   }
 
   async function api(path, opts = {}) {
@@ -194,26 +217,32 @@
     return { imported_items: importedItems, playlists_created: playlistsCreated, items_skipped: itemsSkipped };
   }
 
-  async function ensureUser() {
-    if (pathUserId) {
-      saveUser(pathUserId);
-      return userId;
+  async function loadWorkspace() {
+    if (!BASE) {
+      showToast("API is not configured on this page. Hard-refresh (Ctrl+F5) or try again later.", 12000);
+      updateWorkspaceUi();
+      return;
     }
     if (!userId) {
-      const data = await api("/api/users", { method: "POST", body: "{}" });
-      saveUser(data.user_id);
-    } else {
+      updateWorkspaceUi();
+      return;
+    }
+    try {
+      await api(`/api/users/${userId}/playlists`);
       saveUser(userId);
+      await loadPlaylists();
+    } catch (err) {
+      userId = "";
+      updateWorkspaceUi();
+      showToast("User ID not found. Click New ID First to create a new workspace.", 12000);
+      console.error("loadWorkspace:", err);
     }
-    if (!userId) {
-      throw new Error("Could not create a user ID — try New ID again.");
-    }
-    return userId;
   }
 
   async function requireUserId() {
     if (userId) return userId;
-    return ensureUser();
+    showToast("Click New ID First to create your workspace.");
+    throw new Error("No user ID");
   }
 
   async function loadPlaylists() {
@@ -355,6 +384,13 @@
   });
 
   bindClick("btn-new-user", async () => {
+    if (!BASE) {
+      showToast("API not ready — refresh the page and try again.");
+      return;
+    }
+    if (userId && !confirm("Create a new workspace? Your current ID stays saved in Stremio — use this only for a fresh library.")) {
+      return;
+    }
     try {
       const data = await api("/api/users", { method: "POST", body: "{}" });
       saveUser(data.user_id);
@@ -362,8 +398,9 @@
       const detail = $("detail-panel");
       if (detail) detail.hidden = true;
       await loadPlaylists();
+      showToast("Workspace created. Copy configure link or install in Stremio. Use ⚙ in Stremio to return later.");
     } catch (err) {
-      showToast(`New user failed: ${err.message}`);
+      showToast(`New ID failed: ${err.message}`);
     }
   });
 
@@ -388,8 +425,12 @@
   });
 
   bindClick("btn-copy-url", () => {
-    navigator.clipboard.writeText(window.location.href);
-    showToast("Link copied.");
+    if (!userId) {
+      showToast("Create a workspace with New ID First.");
+      return;
+    }
+    navigator.clipboard.writeText(configurePageUrl());
+    showToast("Configure link copied — bookmark it to return without Stremio.");
   });
 
   bindClick("btn-create-playlist", async () => {
@@ -528,23 +569,17 @@
 
   setupProductionUi();
   setupApiServerUi();
+  updateWorkspaceUi();
 
   (async () => {
     try {
-      await ensureUser();
+      await loadWorkspace();
     } catch (err) {
       const hint = DEV_MODE
         ? "Cannot reach API — check the server field above or run run.bat locally."
         : "Cannot reach the API. Try again in a moment, or hard-refresh this page (Ctrl+F5).";
       showToast(hint, 12000);
       console.error("API error:", BASE, err);
-      return;
-    }
-    try {
-      await loadPlaylists();
-    } catch (err) {
-      showToast(`Could not load channels: ${err.message}`);
-      console.error(err);
     }
   })();
 })();

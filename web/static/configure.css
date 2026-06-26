@@ -104,6 +104,20 @@ textarea { width: 100%; resize: vertical; }
 .deploy-private #api-server-row {
   display: none !important;
 }
+body.no-workspace #channels-panel,
+body.no-workspace #install-footer,
+body.no-workspace #detail-panel {
+  opacity: 0.45;
+  pointer-events: none;
+}
+body.no-workspace .actions .btn:not(#btn-new-user),
+body.no-workspace .actions .btn-file {
+  pointer-events: none;
+  opacity: 0.5;
+}
+#no-user-hint { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--ink-muted); }
+body.has-workspace #no-user-hint { display: none; }
+
 .install-box { width: 100%; margin-bottom: 0.5rem; }
 .install-box label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; }
 .addon-url-input { width: 100%; font-family: ui-monospace, monospace; font-size: 0.8rem; }

@@ -40,6 +40,7 @@ class Settings:
     lock_configure_api: bool
     configure_allowed_origins: str
     configure_allowed_referer_prefix: str
+    configure_pages_url: str
     stremio_streaming_server: str
     backup_schema_version: int
     rust_parser_bin: Path
@@ -83,6 +84,10 @@ class Settings:
             configure_allowed_referer_prefix=os.getenv(
                 "CONFIGURE_ALLOWED_REFERER_PREFIX",
                 "https://alexrabbit.github.io/Stremio-Watchlist-Maker",
+            ).rstrip("/"),
+            configure_pages_url=os.getenv(
+                "CONFIGURE_PAGES_URL",
+                "https://alexrabbit.github.io/Stremio-Watchlist-Maker/configure.html",
             ).rstrip("/"),
             backup_schema_version=int(os.getenv("BACKUP_SCHEMA_VERSION", "1")),
             stremio_streaming_server=os.getenv(

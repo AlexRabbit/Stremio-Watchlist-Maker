@@ -146,12 +146,19 @@ class Database:
             )
 
     def create_user(self, name: str = "My Playlists") -> str:
-        user_id = uuid.uuid4().hex[:16]
-        with self.session() as conn:
-            conn.execute(
-                "INSERT INTO users(id, name) VALUES (?, ?)", (user_id, name)
-            )
-        return user_id
+        import sqlite3
+
+        for _ in range(8):
+            user_id = uuid.uuid4().hex[:16]
+            try:
+                with self.session() as conn:
+                    conn.execute(
+                        "INSERT INTO users(id, name) VALUES (?, ?)", (user_id, name)
+                    )
+                return user_id
+            except sqlite3.IntegrityError:
+                continue
+        raise RuntimeError("could not allocate a unique user id")
 
     def list_users(self) -> list[dict[str, Any]]:
         with self.session() as conn:

@@ -21,11 +21,13 @@ def client(monkeypatch):
         yield app.test_client
 
 
-def test_user_configure_page(client):
+def test_user_configure_redirects_to_pages(client):
     uid = "testuser1234567890"
-    _, resp = client.get(f"/{uid}/configure")
-    assert resp.status == 200
-    assert b"Stremio Watchlist Maker" in resp.body
+    _, resp = client.get(f"/{uid}/configure", allow_redirects=False)
+    assert resp.status in (301, 302, 303, 307, 308)
+    location = resp.headers.get("location", "")
+    assert f"user={uid}" in location
+    assert "configure.html" in location
 
 
 def test_manifest_allows_stremio_cors(client):

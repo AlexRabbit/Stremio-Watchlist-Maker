@@ -14,9 +14,9 @@
     <h1>Stremio Watchlist Maker</h1>
     <p class="tagline">Create movie channels, import lists, watch in Stremio.</p>
     <ol class="steps">
-      <li><strong>Configure</strong> — Create channels &amp; import movies on this page</li>
+      <li><strong>New ID First</strong> — Create your private workspace on this page</li>
       <li><strong>Install</strong> — Pink button at the bottom → installs into Stremio</li>
-      <li><strong>Watch</strong> — Stremio → Discover → <strong>Channel</strong> → your channel</li>
+      <li><strong>Return anytime</strong> — Green <strong>⚙</strong> on the addon in Stremio opens your configure link</li>
     </ol>
   </header>
 
@@ -30,9 +30,10 @@
       </div>
       <div class="field-row">
         <label for="user-id">User ID</label>
-        <input id="user-id" type="text" readonly placeholder="Generate or paste saved ID">
-        <button type="button" id="btn-new-user" class="btn">New ID</button>
+        <input id="user-id" type="text" readonly placeholder="None yet — click New ID First">
+        <button type="button" id="btn-new-user" class="btn btn-primary">New ID First</button>
       </div>
+      <p class="hint" id="no-user-hint">No workspace yet. Click <strong>New ID First</strong> for your private ID. After installing in Stremio, use the green <strong>⚙</strong> on the addon to return here.</p>
       <div class="actions">
         <div class="install-box" id="install-box">
           <label for="addon-url" id="addon-url-label">Paste this URL in Stremio → Addons</label>
@@ -47,7 +48,7 @@
       <p class="hint warn" id="manifest-hint" hidden></p>
     </section>
 
-    <section class="panel glass">
+    <section class="panel glass" id="channels-panel">
       <h2>Channels</h2>
       <div class="field-row">
         <input id="playlist-name" type="text" placeholder="New channel name">
@@ -120,13 +121,13 @@
 
   <div id="install-toast" class="install-toast" hidden role="status"></div>
 
-  <footer class="install-footer glass">
+  <footer class="install-footer glass" id="install-footer">
     <button type="button" id="btn-install-stremio" class="btn btn-install">Install in Stremio</button>
   </footer>
 
   <footer class="footer">
     <p>Open-source · <a href="https://github.com/AlexRabbit/Stremio-Watchlist-Maker" target="_blank" rel="noopener">GitHub</a></p>
   </footer>
-  <script src="static/configure.js?v=17"></script>
+  <script src="static/configure.js?v=18"></script>
 </body>
 </html>

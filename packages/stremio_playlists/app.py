@@ -183,17 +183,19 @@ def create_app() -> Sanic:
 
     @app.get("/configure")
     async def configure_page(_request: Request):
-        html_path = ROOT / "web" / "configure.html"
-        return await response.file(html_path)
+        return response.redirect(settings.configure_pages_url)
 
     @app.get("/<user_id:str>/configure")
-    async def user_configure_page(request: Request, user_id: str):
-        """Stremio opens {addon-base}/configure when user clicks Configure."""
+    async def user_configure_page(_request: Request, user_id: str):
+        """Stremio opens {addon-base}/configure when user taps the green settings icon."""
         if not _valid_user_id(user_id):
-            return response.redirect("/configure")
-        db.ensure_user(user_id)
-        html_path = ROOT / "web" / "configure.html"
-        return await response.file(html_path)
+            return response.redirect(settings.configure_pages_url)
+        base = settings.configure_pages_url
+        if base.endswith(".html"):
+            target = f"{base}?user={user_id}"
+        else:
+            target = f"{base}/configure.html?user={user_id}"
+        return response.redirect(target)
 
     @app.route("/<user_id:str>/manifest.json", methods=["GET", "HEAD"])
     async def manifest(request: Request, user_id: str):

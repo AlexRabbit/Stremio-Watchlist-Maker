@@ -65,7 +65,7 @@ def _manifest_shell(*, manifest_ver: int, catalogs: list[dict[str, Any]]) -> dic
         "catalogs": catalogs,
         "idPrefixes": ["tt"],
         "behaviorHints": {
-            "configurable": False,
+            "configurable": True,
             "configurationRequired": False,
         },
     }

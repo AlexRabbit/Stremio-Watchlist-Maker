@@ -58,6 +58,7 @@ def test_manifest_fits_stremio_limit(seeded_db):
     all_catalog = next(c for c in manifest["catalogs"] if c["id"] == ALL_CATALOG_ID)
     extra_names = {e["name"] for e in all_catalog["extra"]}
     assert extra_names == {"skip", "search"}
+    assert manifest["behaviorHints"]["configurable"] is True
 
 
 def test_manifest_has_all_and_playlist_only(seeded_db):
