@@ -31,3 +31,16 @@ Add GitHub **Actions secrets** (not Variables):
 Then run the **GitHub Pages** workflow.
 
 Server install scripts stay in your **private** ops folder, not in this repo.
+
+## Auto-sync tunnel URL (quick tunnels)
+
+If the API uses an ephemeral `trycloudflare.com` URL, install **tunnel-sync** from the Playlists-Randomizer repo (`deploy/ops/tunnel-sync/`) on your VPS. It watches `/data/stremio-channel-organizer/logs/tunnel.url`, updates the GitHub secret `PUBLIC_API_URL`, updates `BASE_URL` in the server `.env`, and triggers the **GitHub Pages** workflow automatically after reboot.
+
+```sh
+# On VPS (see Playlists-Randomizer docs/DEPLOY.md for full setup)
+printf '%s' 'YOUR_GITHUB_PAT' > /etc/tunnel-sync/github.token
+chmod 600 /etc/tunnel-sync/github.token
+/data/ops/tunnel-sync/.venv/bin/python /data/ops/tunnel-sync/sync.py --once
+```
+
+`CONFIGURE_API_TOKEN` is **not** rotated when the tunnel URL changes. Users only see `github.io` and `trycloudflare.com` — never the VPS IP.
